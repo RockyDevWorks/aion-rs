@@ -1,0 +1,8 @@
+aion 0.0.1-1;
+
+language dupprop {
+    metadata {
+        description = "First description.";
+        description = "Duplicate description property.";
+    }
+}

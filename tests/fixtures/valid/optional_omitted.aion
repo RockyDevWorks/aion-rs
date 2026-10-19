@@ -1,0 +1,8 @@
+// Optional sections (intent, inventory) and display_name omitted.
+aion 0.0.1-1;
+
+language terse {
+    metadata {
+        description = "A language with only the mandatory metadata.";
+    }
+}

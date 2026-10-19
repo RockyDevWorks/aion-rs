@@ -1,0 +1,12 @@
+aion 0.0.1-1;
+
+language dupmember {
+    metadata {
+        description = "Duplicate phoneme in a set.";
+    }
+    phonology.inventory {
+        consonants {
+            include = { /m/, /n/, /m/ };
+        }
+    }
+}

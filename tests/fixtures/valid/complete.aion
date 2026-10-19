@@ -1,0 +1,34 @@
+// A complete AION definition exercising every supported section.
+aion 0.0.1-1;
+
+language aelith {
+    metadata {
+        description = "An ancient, melodic constructed language.";
+        display_name = "Aelith";
+    }
+
+    intent phonology {
+        description = "Soft, flowing, vowel-forward phonology.";
+        style = { "melodic", "soft", "archaic" };
+        references = {
+            language("Tamil"),
+            conlang("Quenya")
+        };
+        character = "liquid";
+        articulation = { "front", "open" };
+        rhythm = "trochaic";
+        avoid = { "harsh plosives", "consonant clusters" };
+    }
+
+    phonology.inventory {
+        consonants {
+            cardinality = 18;
+            include = { /m/, /n/, /ɳ/, /ʒ/ };
+            exclude = { /q/ };
+        }
+        vowels {
+            cardinality = 7;
+            include = { /a/, /ə/, /i/ };
+        }
+    }
+}

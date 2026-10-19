@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # Pinned recent stable toolchain used by the fmt/clippy/doc/semver jobs.
+  # Bump this as new Rust releases land (Dependabot does not manage it).
+  RUST_STABLE: "1.99.1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Formatting — fast fail on style before anything expensive runs.
+  # ---------------------------------------------------------------------------
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust ${{ env.RUST_STABLE }} (with rustfmt)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          components: rustfmt
+      - name: cargo fmt --check
+        run: cargo fmt --all --check
+
+  # ---------------------------------------------------------------------------
+  # Clippy — lints as errors.
+  # ---------------------------------------------------------------------------
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust ${{ env.RUST_STABLE }} (with clippy)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # ---------------------------------------------------------------------------
+  # Build + test across platforms and a pinned MSRV.
+  # ---------------------------------------------------------------------------
+  test:
+    name: test (${{ matrix.os }} / ${{ matrix.toolchain }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Pinned recent stable toolchain.
+        toolchain: ["1.99.1"]
+        include:
+          # Pin an MSRV check on Linux only.
+          - os: ubuntu-latest
+            toolchain: "1.74.0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust ${{ matrix.toolchain }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.toolchain }}
+      - name: cargo build
+        run: cargo build --all-targets --verbose
+      - name: cargo test
+        run: cargo test --all-targets --verbose
+      - name: cargo test (doc)
+        run: cargo test --doc --verbose
+
+  # ---------------------------------------------------------------------------
+  # Documentation must build without warnings.
+  # ---------------------------------------------------------------------------
+  docs:
+    name: doc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust ${{ env.RUST_STABLE }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo doc
+        run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+
+  # ---------------------------------------------------------------------------
+  # Semantic versioning — flags breaking API changes in the library crate.
+  # Runs only on pull requests, where a baseline comparison is meaningful.
+  # ---------------------------------------------------------------------------
+  semver:
+    name: semver-checks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust ${{ env.RUST_STABLE }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo-semver-checks
+        uses: obi1kenobi/cargo-semver-checks-action@v2

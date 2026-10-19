@@ -1,0 +1,22 @@
+// Language sections appear in a different order than usual:
+// inventory first, then intent, then metadata.
+aion 0.0.1-1;
+
+language reordered {
+    phonology.inventory {
+        vowels {
+            cardinality = 5;
+        }
+        consonants {
+            cardinality = 20;
+        }
+    }
+
+    intent phonology {
+        description = "Order-independent sections.";
+    }
+
+    metadata {
+        description = "Sections may appear in any order.";
+    }
+}

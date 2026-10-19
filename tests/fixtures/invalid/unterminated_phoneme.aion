@@ -1,0 +1,12 @@
+aion 0.0.1-1;
+
+language badphoneme {
+    metadata {
+        description = "Phoneme literal is not closed.";
+    }
+    phonology.inventory {
+        consonants {
+            include = { /m };
+        }
+    }
+}

@@ -1,0 +1,13 @@
+aion 0.0.1-1;
+
+language dupintent {
+    metadata {
+        description = "Has two intent blocks.";
+    }
+    intent phonology {
+        description = "First intent block.";
+    }
+    intent phonology {
+        description = "Second intent block is not allowed.";
+    }
+}

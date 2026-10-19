@@ -1,0 +1,7 @@
+aion 0.0.1-1;
+
+language nodesc {
+    metadata {
+        display_name = "Has a name but no description.";
+    }
+}

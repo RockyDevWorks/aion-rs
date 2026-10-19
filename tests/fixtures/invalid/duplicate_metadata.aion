@@ -1,0 +1,10 @@
+aion 0.0.1-1;
+
+language dupmeta {
+    metadata {
+        description = "First metadata block.";
+    }
+    metadata {
+        description = "Second metadata block is not allowed.";
+    }
+}

@@ -1,0 +1,17 @@
+aion 0.0.1-1;
+
+language dupinv {
+    metadata {
+        description = "Has two inventory blocks.";
+    }
+    phonology.inventory {
+        consonants {
+            cardinality = 10;
+        }
+    }
+    phonology.inventory {
+        vowels {
+            cardinality = 5;
+        }
+    }
+}

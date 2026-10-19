@@ -1,0 +1,7 @@
+aion 1.2.3-4;
+
+language wrongver {
+    metadata {
+        description = "Version is not 0.0.1-1.";
+    }
+}

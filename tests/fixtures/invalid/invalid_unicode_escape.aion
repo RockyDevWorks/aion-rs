@@ -1,0 +1,7 @@
+aion 0.0.1-1;
+
+language badescape {
+    metadata {
+        description = "Invalid scalar value: \u{110000}.";
+    }
+}

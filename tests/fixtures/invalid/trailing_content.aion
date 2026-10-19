@@ -1,0 +1,9 @@
+aion 0.0.1-1;
+
+language trailing {
+    metadata {
+        description = "Unexpected content after the language declaration.";
+    }
+}
+
+this is not valid aion

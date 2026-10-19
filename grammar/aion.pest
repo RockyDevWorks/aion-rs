@@ -1,0 +1,485 @@
+//
+// AION Definition Language
+// Grammar version: 0.0.1-1
+// Format: Pest PEG
+// Encoding: UTF-8
+//
+// Scope: Structural syntax validation
+//
+// AUTHORITATIVE GRAMMAR.
+// This file (grammar/aion.pest) is the single source of truth, compiled into
+// the `aion` crate via `#[grammar = "../grammar/aion.pest"]`.
+//
+// Changes from the original grammar (all minimal, documented):
+//   * Added this provenance header.
+//   * Property values now parse through a single permissive `value` rule
+//     (one of: string, string_set, reference_set, phoneme_set, integer).
+//     Type enforcement moved to the structural validator so that a wrong value
+//     type (e.g. `cardinality = "twenty";`) yields a precise AION-008
+//     "incorrect value type" diagnostic instead of an opaque parse error.
+//     No AION keywords, blocks, properties, or language features were added or
+//     removed; only the value position became type-permissive at parse time.
+// No AION properties, blocks, or language features were added or removed.
+
+// ========================================
+// 1. WHITESPACE AND COMMENTS
+// ========================================
+
+WHITESPACE = _{
+    " "
+    | "\t"
+    | "\r\n"
+    | "\n"
+    | "\r"
+}
+
+COMMENT = _{
+    line_comment
+    | block_comment
+}
+
+line_comment = _{
+    "//" ~ (!("\r" | "\n") ~ ANY)*
+}
+
+block_comment = _{
+    "/*" ~ (!"*/" ~ ANY)* ~ "*/"
+}
+
+
+// ========================================
+// 2. DOCUMENT
+// ========================================
+
+document = {
+    SOI
+    ~ version_declaration
+    ~ language_declaration
+    ~ EOI
+}
+
+version_declaration = {
+    kw_aion ~ version ~ ";"
+}
+
+version = @{
+    version_number
+    ~ "."
+    ~ version_number
+    ~ "."
+    ~ version_number
+    ~ "-"
+    ~ version_number
+}
+
+version_number = _{
+    "0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*
+}
+
+
+// ========================================
+// 3. LANGUAGE DECLARATION
+// ========================================
+
+language_declaration = {
+    kw_language
+    ~ identifier
+    ~ "{"
+    ~ language_section*
+    ~ "}"
+}
+
+language_section = {
+    metadata_block
+    | intent_phonology_block
+    | phonology_inventory_block
+}
+
+
+// ========================================
+// 4. LANGUAGE METADATA
+// ========================================
+
+metadata_block = {
+    kw_metadata
+    ~ "{"
+    ~ metadata_property*
+    ~ "}"
+}
+
+metadata_property = {
+    metadata_description
+    | metadata_display_name
+}
+
+metadata_description = {
+    kw_description ~ "=" ~ value ~ ";"
+}
+
+metadata_display_name = {
+    kw_display_name ~ "=" ~ value ~ ";"
+}
+
+
+// ========================================
+// 5. PHONOLOGY INTENT
+// ========================================
+
+intent_phonology_block = {
+    kw_intent
+    ~ kw_phonology
+    ~ "{"
+    ~ intent_property*
+    ~ "}"
+}
+
+intent_property = {
+    intent_description
+    | intent_style
+    | intent_references
+    | intent_character
+    | intent_articulation
+    | intent_rhythm
+    | intent_avoid
+}
+
+intent_description = {
+    kw_description ~ "=" ~ value ~ ";"
+}
+
+intent_style = {
+    kw_style ~ "=" ~ value ~ ";"
+}
+
+intent_references = {
+    kw_references ~ "=" ~ value ~ ";"
+}
+
+intent_character = {
+    kw_character ~ "=" ~ value ~ ";"
+}
+
+intent_articulation = {
+    kw_articulation ~ "=" ~ value ~ ";"
+}
+
+intent_rhythm = {
+    kw_rhythm ~ "=" ~ value ~ ";"
+}
+
+intent_avoid = {
+    kw_avoid ~ "=" ~ value ~ ";"
+}
+
+
+// ========================================
+// 6. PHONOLOGY INVENTORY
+// ========================================
+
+phonology_inventory_block = {
+    kw_phonology
+    ~ "."
+    ~ kw_inventory
+    ~ "{"
+    ~ inventory_section*
+    ~ "}"
+}
+
+inventory_section = {
+    consonant_block
+    | vowel_block
+}
+
+consonant_block = {
+    kw_consonants
+    ~ "{"
+    ~ inventory_property*
+    ~ "}"
+}
+
+vowel_block = {
+    kw_vowels
+    ~ "{"
+    ~ inventory_property*
+    ~ "}"
+}
+
+inventory_property = {
+    cardinality_property
+    | include_property
+    | exclude_property
+}
+
+cardinality_property = {
+    kw_cardinality ~ "=" ~ value ~ ";"
+}
+
+include_property = {
+    kw_include ~ "=" ~ value ~ ";"
+}
+
+exclude_property = {
+    kw_exclude ~ "=" ~ value ~ ";"
+}
+
+
+// ========================================
+// 7. VALUE TYPES
+// ========================================
+//
+// A property value is parsed permissively as one of the scalar forms or a
+// generic brace-delimited set. The structural validator decides whether the
+// value's actual type matches the property (AION-008 on mismatch) and inspects
+// set members for a uniform, allowed element type.
+
+value = {
+    integer
+    | string
+    | set
+}
+
+// A generic set: zero or more members of a single element kind. The grammar
+// forbids trailing commas; the validator rejects mixed or disallowed member
+// kinds and duplicate members.
+set = {
+    "{"
+    ~ (set_member ~ ("," ~ set_member)*)?
+    ~ "}"
+}
+
+set_member = {
+    reference
+    | phoneme
+    | string
+}
+
+
+// ========================================
+// 8. LANGUAGE REFERENCES
+// ========================================
+
+reference = {
+    reference_kind
+    ~ "("
+    ~ string
+    ~ ")"
+}
+
+reference_kind = {
+    kw_language
+    | kw_conlang
+}
+
+
+// ========================================
+// 9. STRINGS
+// ========================================
+
+string = {
+    multiline_string
+    | quoted_string
+}
+
+quoted_string = @{
+    "\""
+    ~ quoted_character*
+    ~ "\""
+}
+
+quoted_character = _{
+    escape_sequence
+    | (
+        !("\"" | "\\" | "\r" | "\n")
+        ~ ANY
+    )
+}
+
+escape_sequence = _{
+    "\\"
+    ~ (
+        "\""
+        | "\\"
+        | "n"
+        | "r"
+        | "t"
+        | unicode_escape
+    )
+}
+
+unicode_escape = _{
+    "u"
+    ~ "{"
+    ~ ASCII_HEX_DIGIT{1,6}
+    ~ "}"
+}
+
+multiline_string = @{
+    "\"\"\""
+    ~ (!"\"\"\"" ~ ANY)*
+    ~ "\"\"\""
+}
+
+
+// ========================================
+// 10. PHONEME LITERALS
+// ========================================
+
+phoneme = @{
+    "/"
+    ~ phoneme_character+
+    ~ "/"
+}
+
+phoneme_character = _{
+    !("/" | "\r" | "\n")
+    ~ ANY
+}
+
+
+// ========================================
+// 11. IDENTIFIERS AND INTEGERS
+// ========================================
+
+identifier = @{
+    !reserved_identifier
+    ~ identifier_start
+    ~ identifier_continue*
+}
+
+identifier_start = _{
+    ASCII_ALPHA
+    | "_"
+}
+
+identifier_continue = _{
+    ASCII_ALPHANUMERIC
+    | "_"
+}
+
+integer = @{
+    ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
+    ~ !ASCII_DIGIT
+}
+
+
+// ========================================
+// 12. RESERVED KEYWORDS
+// ========================================
+
+// Keyword rules are *atomic* (`@`) rather than merely silent (`_`).
+//
+// CORRECTION over the original grammar: the original marked these silent
+// (`_{ "kw" ~ !identifier_continue }`). In a non-atomic/silent rule Pest still
+// inserts implicit WHITESPACE between `~`-separated terms, so
+// `"aion" ~ !identifier_continue` effectively became
+// `"aion" ~ WHITESPACE* ~ !identifier_continue`. After consuming the space that
+// follows a keyword, the lookahead was tested against the *next* token (e.g.
+// the `0` of the version), which is an `identifier_continue`, so the negative
+// lookahead failed and every keyword — and therefore the whole document —
+// failed to parse. Making the keyword rules atomic disables implicit
+// whitespace inside them so the boundary check is applied immediately after the
+// literal, which is the intended behaviour. No keywords or syntax changed.
+kw_aion = @{
+    "aion" ~ !identifier_continue
+}
+
+kw_language = @{
+    "language" ~ !identifier_continue
+}
+
+kw_conlang = @{
+    "conlang" ~ !identifier_continue
+}
+
+kw_metadata = @{
+    "metadata" ~ !identifier_continue
+}
+
+kw_description = @{
+    "description" ~ !identifier_continue
+}
+
+kw_display_name = @{
+    "display_name" ~ !identifier_continue
+}
+
+kw_intent = @{
+    "intent" ~ !identifier_continue
+}
+
+kw_phonology = @{
+    "phonology" ~ !identifier_continue
+}
+
+kw_inventory = @{
+    "inventory" ~ !identifier_continue
+}
+
+kw_style = @{
+    "style" ~ !identifier_continue
+}
+
+kw_references = @{
+    "references" ~ !identifier_continue
+}
+
+kw_character = @{
+    "character" ~ !identifier_continue
+}
+
+kw_articulation = @{
+    "articulation" ~ !identifier_continue
+}
+
+kw_rhythm = @{
+    "rhythm" ~ !identifier_continue
+}
+
+kw_avoid = @{
+    "avoid" ~ !identifier_continue
+}
+
+kw_consonants = @{
+    "consonants" ~ !identifier_continue
+}
+
+kw_vowels = @{
+    "vowels" ~ !identifier_continue
+}
+
+kw_cardinality = @{
+    "cardinality" ~ !identifier_continue
+}
+
+kw_include = @{
+    "include" ~ !identifier_continue
+}
+
+kw_exclude = @{
+    "exclude" ~ !identifier_continue
+}
+
+reserved_identifier = _{
+    (
+        kw_aion
+        | kw_language
+        | kw_conlang
+        | kw_metadata
+        | kw_description
+        | kw_display_name
+        | kw_intent
+        | kw_phonology
+        | kw_inventory
+        | kw_style
+        | kw_references
+        | kw_character
+        | kw_articulation
+        | kw_rhythm
+        | kw_avoid
+        | kw_consonants
+        | kw_vowels
+        | kw_cardinality
+        | kw_include
+        | kw_exclude
+    )
+}

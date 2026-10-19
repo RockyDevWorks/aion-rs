@@ -1,0 +1,11 @@
+// Line comment before the version.
+aion 0.0.1-1; // trailing line comment
+
+/* A block comment
+   spanning multiple lines. */
+language commented {
+    metadata {
+        // description follows
+        description = "Comments are ignored."; /* inline block */
+    }
+}

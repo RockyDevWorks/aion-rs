@@ -1,0 +1,12 @@
+aion 0.0.1-1;
+
+language trailingcomma {
+    metadata {
+        description = "Set has a trailing comma.";
+    }
+    phonology.inventory {
+        consonants {
+            include = { /m/, /n/, };
+        }
+    }
+}

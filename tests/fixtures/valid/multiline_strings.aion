@@ -1,0 +1,13 @@
+// Multiline (triple-quoted) strings.
+aion 0.0.1-1;
+
+language multiliney {
+    metadata {
+        description = """
+            A language described across
+            several lines of prose.
+        """;
+        display_name = """Multi
+Line Name""";
+    }
+}

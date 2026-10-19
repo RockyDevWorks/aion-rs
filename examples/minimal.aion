@@ -1,0 +1,7 @@
+aion 0.0.1-1;
+
+language aelith {
+    metadata {
+        description = "An ancient, melodic constructed language.";
+    }
+}

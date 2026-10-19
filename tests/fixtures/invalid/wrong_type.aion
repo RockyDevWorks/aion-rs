@@ -1,0 +1,12 @@
+aion 0.0.1-1;
+
+language wrongtype {
+    metadata {
+        description = "Cardinality must be an integer, not a string.";
+    }
+    phonology.inventory {
+        consonants {
+            cardinality = "twenty";
+        }
+    }
+}

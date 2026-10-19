@@ -1,0 +1,12 @@
+aion 0.0.1-1;
+
+language overflow {
+    metadata {
+        description = "Cardinality exceeds the u32 range.";
+    }
+    phonology.inventory {
+        consonants {
+            cardinality = 4294967296;
+        }
+    }
+}

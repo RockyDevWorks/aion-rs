@@ -1,0 +1,17 @@
+// Unicode phoneme literals and a unicode escape in a string.
+aion 0.0.1-1;
+
+language unicodey {
+    metadata {
+        description = "Uses non-ASCII phonemes: \u{0259} and more.";
+    }
+
+    phonology.inventory {
+        consonants {
+            include = { /ɳ/, /ʒ/, /ŋ/, /θ/ };
+        }
+        vowels {
+            include = { /ə/, /ɛ/, /ɯ/ };
+        }
+    }
+}

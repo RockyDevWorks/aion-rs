@@ -1,0 +1,8 @@
+aion 0.0.1-1;
+
+language unknownprop {
+    metadata {
+        description = "Has an unknown property.";
+        colour = "blue";
+    }
+}

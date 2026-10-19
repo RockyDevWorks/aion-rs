@@ -1,0 +1,19 @@
+// Intent properties in both the single-string form and the string-set form.
+aion 0.0.1-1;
+
+language intentforms {
+    metadata {
+        description = "Exercises both value forms for intent properties.";
+    }
+
+    intent phonology {
+        // single-string forms
+        style = "melodic";
+        character = "liquid";
+        articulation = "front";
+        rhythm = "iambic";
+        avoid = "clusters";
+        // set form
+        references = { language("Finnish") };
+    }
+}
