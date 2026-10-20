@@ -16,8 +16,8 @@ use std::process::ExitCode;
 
 use clap::{Parser as ClapParser, Subcommand};
 
-use aion::diagnostic::Code;
-use aion::{check, diagnostic::Diagnostic};
+use aion_validator::diagnostic::Code;
+use aion_validator::{check, diagnostic::Diagnostic};
 
 /// Maximum accepted source size in bytes. Files larger than this are rejected
 /// rather than silently truncated. Documented limit: 8 MiB.

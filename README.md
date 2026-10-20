@@ -211,6 +211,13 @@ aion-rs/
     └── invalid.aion
 ```
 
+### Crate naming
+
+The Cargo package is `aion-validator` (library crate `aion_validator`), chosen
+to avoid a name collision with the unrelated `aion` crate already published on
+crates.io. The command-line binary is still named `aion`, so all usage above is
+unchanged.
+
 ### Grammar authority
 
 `grammar/aion.pest` is the single authoritative grammar, compiled into the
