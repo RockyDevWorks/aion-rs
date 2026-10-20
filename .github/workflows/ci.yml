@@ -70,7 +70,7 @@ jobs:
         include:
           # Pin an MSRV check on Linux only.
           - os: ubuntu-latest
-            toolchain: "1.74.0"
+            toolchain: "1.85.0"
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust ${{ matrix.toolchain }}

@@ -134,7 +134,7 @@ CI runs on GitHub Actions (`.github/workflows/`):
   - `rustfmt` — `cargo fmt --all --check`.
   - `clippy` — `cargo clippy --all-targets --all-features -- -D warnings`.
   - `test` — build + `cargo test` on Linux, Windows, and macOS using a pinned
-    recent stable toolchain (**Rust 1.99.1**), plus a pinned **MSRV 1.74.0**
+    recent stable toolchain (**Rust 1.99.1**), plus a pinned **MSRV 1.85.0**
     build on Linux, and doc tests.
   - `doc` — `cargo doc --no-deps` with `-D warnings`.
   - `semver-checks` — [`cargo-semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks)
@@ -149,8 +149,9 @@ a single pull request.
 
 The primary CI toolchain is pinned to a recent stable release (**Rust 1.99.1**)
 via the `RUST_STABLE` env var in `ci.yml`; bump it as new releases land. The
-minimum supported Rust version (MSRV) is **1.74.0**, matching `clap`'s
-requirement and recorded as `rust-version` in `Cargo.toml`.
+minimum supported Rust version (MSRV) is **1.85.0**, recorded as `rust-version`
+in `Cargo.toml`. 1.85 is required because transitive dependencies (e.g.
+`clap_lex`) ship edition-2024 manifests, which older Cargo cannot parse.
 
 ## Diagnostics
 

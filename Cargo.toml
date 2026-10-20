@@ -2,7 +2,7 @@
 name = "aion"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.74.0"
+rust-version = "1.85.0"
 description = "Structural validator for the AION v0.0.1-1 language-definition format"
 license = "MIT OR Apache-2.0"
 
