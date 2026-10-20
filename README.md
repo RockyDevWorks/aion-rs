@@ -139,9 +139,10 @@ CI runs on GitHub Actions (`.github/workflows/`):
   - `doc` — `cargo doc --no-deps` with `-D warnings`.
   - `semver-checks` — [`cargo-semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks)
     on pull requests, to flag breaking changes to the library API. It diffs
-    against the crate's last crates.io release, so while `aion-validator` is
-    unpublished it has no baseline; the job is marked `continue-on-error` and is
-    non-blocking until the crate is published.
+    against the crate's last crates.io release, so the job first probes
+    crates.io and **skips** the check (passing) while `aion-validator` is
+    unpublished; the real comparison runs automatically once the crate is
+    published.
 - **`audit.yml`** — `cargo audit` for known security advisories, on dependency
   changes and on a weekly schedule.
 
