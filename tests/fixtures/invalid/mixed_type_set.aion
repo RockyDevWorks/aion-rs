@@ -1,0 +1,12 @@
+// A set mixing a string and a phoneme is not homogeneous; the validator
+// rejects it as an incorrect value type (AION-008).
+aion 0.0.1-1;
+
+language mixedset {
+    metadata {
+        description = "Mixed-type set members.";
+    }
+    intent phonology {
+        style = { "melodic", /m/ };
+    }
+}

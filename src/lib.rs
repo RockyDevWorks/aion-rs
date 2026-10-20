@@ -41,3 +41,35 @@ pub fn check(source: &str) -> Result<(), Vec<Diagnostic>> {
         Err(diagnostics)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const VALID: &str =
+        "aion 0.0.1-1;\nlanguage t {\n    metadata {\n        description = \"d\";\n    }\n}\n";
+
+    #[test]
+    fn check_ok_for_valid_source() {
+        assert!(check(VALID).is_ok());
+    }
+
+    #[test]
+    fn check_err_aggregates_validator_diagnostics() {
+        // Missing metadata -> at least one diagnostic.
+        let src = "aion 0.0.1-1;\nlanguage t {\n}\n";
+        let diags = check(src).expect_err("should be invalid");
+        assert!(!diags.is_empty());
+        assert!(diags
+            .iter()
+            .any(|d| d.code == diagnostic::Code::MissingRequired));
+    }
+
+    #[test]
+    fn check_err_wraps_syntax_diagnostic_as_single_element() {
+        // A parse failure returns exactly one syntax diagnostic.
+        let diags = check("not aion at all").expect_err("syntax error");
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].code, diagnostic::Code::Syntax);
+    }
+}

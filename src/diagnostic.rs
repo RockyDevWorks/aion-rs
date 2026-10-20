@@ -159,10 +159,7 @@ impl Diagnostic {
                 filename, span.line, span.column
             ));
 
-            let line_text = source
-                .lines()
-                .nth(span.line.saturating_sub(1))
-                .unwrap_or("");
+            let line_text = nth_line(source, span.line);
             let gutter_width = span.line.to_string().len();
             let pad = " ".repeat(gutter_width);
 
@@ -189,16 +186,44 @@ impl Diagnostic {
 
 /// Number of carets to draw: the span length in chars, clamped to the end of
 /// the span's line so the underline never spills onto the next line.
+///
+/// Byte offsets are snapped to UTF-8 character boundaries before slicing so
+/// that a span whose bounds were clamped mid-codepoint (for example a
+/// single-position syntax error reported just before a multi-byte character)
+/// can never panic.
 fn caret_len(source: &str, span: Span) -> usize {
-    let start = span.start.min(source.len());
-    let end = span.end.min(source.len());
+    let start = floor_char_boundary(source, span.start.min(source.len()));
+    let end = floor_char_boundary(source, span.end.min(source.len()));
     if end <= start {
         return 1;
     }
     let slice = &source[start..end];
-    // Stop at the first newline so multi-line spans only underline line one.
-    let first_line = slice.split('\n').next().unwrap_or(slice);
+    // Stop at the first line break so multi-line spans only underline line one.
+    // Both `\n` and `\r` are treated as terminators so CR and CRLF endings
+    // behave identically to LF.
+    let first_line = slice.split(['\n', '\r']).next().unwrap_or(slice);
     first_line.chars().count().max(1)
+}
+
+/// Extract the 1-based `line`-th line of `source` for display.
+///
+/// Lines are delimited by `\n`, matching how [`line_col`] counts line numbers,
+/// so the rendered line always corresponds to the reported line number. A
+/// trailing `\r` (from a CRLF ending) is stripped so carriage returns are not
+/// echoed into the diagnostic. Returns `""` when the line is out of range.
+fn nth_line(source: &str, line: usize) -> &str {
+    let raw = source.split('\n').nth(line.saturating_sub(1)).unwrap_or("");
+    raw.strip_suffix('\r').unwrap_or(raw)
+}
+
+/// Round `index` down to the nearest UTF-8 character boundary (never past the
+/// start of the string). Equivalent to the unstable `str::floor_char_boundary`.
+fn floor_char_boundary(source: &str, index: usize) -> usize {
+    let mut i = index.min(source.len());
+    while i > 0 && !source.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
 }
 
 #[cfg(test)]
@@ -222,6 +247,50 @@ mod tests {
     }
 
     #[test]
+    fn caret_len_does_not_panic_on_mid_codepoint_span() {
+        // `é` is two bytes (0xC3 0xA9). A span whose end falls between them must
+        // not panic: `floor_char_boundary` snaps it back to a boundary.
+        let src = "é";
+        let span = Span {
+            start: 0,
+            end: 1, // mid-codepoint
+            line: 1,
+            column: 1,
+        };
+        // Should return 1 (the snapped-back slice is empty) without panicking.
+        assert_eq!(caret_len(src, span), 1);
+    }
+
+    #[test]
+    fn render_mid_codepoint_span_does_not_panic() {
+        let src = "aion 0.0.1-1;\nlanguage café {";
+        // Build a span that deliberately ends inside the `é` byte sequence.
+        let start = src.find('é').unwrap();
+        let span = Span {
+            start,
+            end: start + 1,
+            line: 2,
+            column: 15,
+        };
+        let d = Diagnostic::new(Code::Syntax, "syntax error").with_span(span);
+        // Must not panic.
+        let rendered = d.render("inline.aion", src);
+        assert!(rendered.contains("error[AION-001]"));
+    }
+
+    #[test]
+    fn nth_line_strips_trailing_cr_for_crlf() {
+        let src = "aion 0.0.1-1;\r\nlanguage x {\r\n";
+        assert_eq!(nth_line(src, 1), "aion 0.0.1-1;");
+        assert_eq!(nth_line(src, 2), "language x {");
+    }
+
+    #[test]
+    fn nth_line_out_of_range_is_empty() {
+        assert_eq!(nth_line("one\ntwo", 99), "");
+    }
+
+    #[test]
     fn render_contains_code_and_location() {
         let src = "aion 0.0.1-1;\ncardinality = \"twenty\";";
         let span = Span::from_offsets(src, 28, 36);
@@ -233,5 +302,80 @@ mod tests {
         assert!(rendered.contains("--> examples/invalid.aion:2:"));
         assert!(rendered.contains("^"));
         assert!(rendered.contains("= expected a nonnegative integer"));
+    }
+
+    #[test]
+    fn all_codes_format_as_three_digit_aion() {
+        let codes = [
+            Code::Syntax,
+            Code::UnsupportedVersion,
+            Code::MissingRequired,
+            Code::Duplicate,
+            Code::WrongType,
+            Code::IntegerOverflow,
+            Code::DuplicateMember,
+            Code::EmptyValue,
+            Code::InvalidEscape,
+            Code::Input,
+        ];
+        for c in codes {
+            let s = c.to_string();
+            assert!(s.starts_with("AION-"), "{s}");
+            // Numeric part is zero-padded to at least three digits.
+            let num = &s["AION-".len()..];
+            assert!(num.len() >= 3, "{s}");
+            assert!(num.chars().all(|ch| ch.is_ascii_digit()), "{s}");
+            assert_eq!(c.number(), num.parse::<u16>().unwrap());
+        }
+    }
+
+    #[test]
+    fn render_without_span_but_with_note_uses_inline_note() {
+        let d = Diagnostic::new(Code::MissingRequired, "something is missing")
+            .with_note("add the required element");
+        let rendered = d.render("f.aion", "aion 0.0.1-1;");
+        assert!(rendered.contains("error[AION-003]: something is missing"));
+        // No `-->` location line when there is no span.
+        assert!(!rendered.contains("-->"));
+        // The note is rendered inline with the `=` marker.
+        assert!(rendered.contains("= add the required element"));
+    }
+
+    #[test]
+    fn render_without_span_or_note_is_just_the_header() {
+        let d = Diagnostic::new(Code::Syntax, "empty document");
+        let rendered = d.render("f.aion", "");
+        assert_eq!(rendered, "error[AION-001]: empty document\n");
+    }
+
+    #[test]
+    fn render_span_without_note_has_no_note_line() {
+        let src = "aion 0.0.1-1;";
+        let span = Span::from_offsets(src, 0, 4);
+        let d = Diagnostic::new(Code::Syntax, "bad").with_span(span);
+        let rendered = d.render("f.aion", src);
+        assert!(rendered.contains("-->"));
+        assert!(!rendered.contains(" = "));
+    }
+
+    #[test]
+    fn from_offsets_clamps_past_end() {
+        let src = "abc";
+        // Offsets beyond the end must clamp rather than panic.
+        let span = Span::from_offsets(src, 100, 200);
+        assert_eq!(span.line, 1);
+    }
+
+    #[test]
+    fn caret_len_multiline_span_underlines_first_line_only() {
+        let src = "line1\nline2";
+        // Span covering both lines; caret length clamps to first line (5).
+        let span = Span {
+            start: 0,
+            end: src.len(),
+            line: 1,
+            column: 1,
+        };
+        assert_eq!(caret_len(src, span), 5);
     }
 }

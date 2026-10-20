@@ -1,0 +1,9 @@
+// Invalid Unicode scalar escape in metadata.display_name (AION-012).
+aion 0.0.1-1;
+
+language badescape {
+    metadata {
+        description = "Valid description.";
+        display_name = "Bad\u{110000}";
+    }
+}

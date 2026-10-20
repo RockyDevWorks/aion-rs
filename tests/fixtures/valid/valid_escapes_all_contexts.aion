@@ -1,0 +1,17 @@
+// Valid Unicode scalar escapes in every quoted-string context:
+// metadata.description, metadata.display_name, intent description,
+// a string-set member, and a reference argument.
+aion 0.0.1-1;
+
+language escapes {
+    metadata {
+        description = "Soft \u{2018}quotes\u{2019} and a tab:\t end.";
+        display_name = "Ael\u{00ED}th";
+    }
+
+    intent phonology {
+        description = "Line one.\nLine two with \u{2014} dash.";
+        style = { "mel\u{00F3}dic", "soft" };
+        references = { language("Tam\u{0129}l") };
+    }
+}

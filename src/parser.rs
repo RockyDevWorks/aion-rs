@@ -142,4 +142,104 @@ language aelith {
         let err = parse(src).unwrap_err();
         assert_eq!(err.code, Code::Syntax);
     }
+
+    #[test]
+    fn empty_input_is_a_syntax_error_with_span() {
+        let err = parse("").unwrap_err();
+        assert_eq!(err.code, Code::Syntax);
+        assert!(err.span.is_some());
+    }
+
+    #[test]
+    fn missing_version_declaration_reports_expected_rule() {
+        // Starts with `language` instead of `aion ...;`.
+        let err = parse("language x { }").unwrap_err();
+        assert_eq!(err.code, Code::Syntax);
+        // The note should mention what was expected at that position.
+        assert!(err.note.is_some());
+    }
+
+    #[test]
+    fn syntax_span_line_and_column_are_resolved() {
+        // Error on the second line; line/col must be populated.
+        let src = "aion 0.0.1-1;\n@@@";
+        let err = parse(src).unwrap_err();
+        let span = err.span.expect("span present");
+        assert!(span.line >= 1 && span.column >= 1);
+    }
+
+    // ---- rule_label / describe_parsing_error: direct coverage -------------
+
+    #[test]
+    fn rule_label_covers_named_and_fallback_rules() {
+        // Every explicitly named arm.
+        assert_eq!(rule_label(&Rule::document), "a complete AION document");
+        assert_eq!(
+            rule_label(&Rule::version_declaration),
+            "a version declaration"
+        );
+        assert_eq!(rule_label(&Rule::version), "a version (e.g. 0.0.1-1)");
+        assert_eq!(
+            rule_label(&Rule::language_declaration),
+            "a language declaration"
+        );
+        assert_eq!(rule_label(&Rule::language_section), "a language section");
+        assert_eq!(rule_label(&Rule::metadata_block), "a metadata block");
+        assert_eq!(
+            rule_label(&Rule::intent_phonology_block),
+            "an `intent phonology` block"
+        );
+        assert_eq!(
+            rule_label(&Rule::phonology_inventory_block),
+            "a `phonology.inventory` block"
+        );
+        assert_eq!(rule_label(&Rule::string), "a string");
+        assert_eq!(rule_label(&Rule::quoted_string), "a quoted string");
+        assert_eq!(rule_label(&Rule::multiline_string), "a multiline string");
+        assert_eq!(rule_label(&Rule::phoneme), "a phoneme literal");
+        assert_eq!(rule_label(&Rule::identifier), "an identifier");
+        assert_eq!(rule_label(&Rule::integer), "an integer");
+        assert_eq!(rule_label(&Rule::reference), "a reference");
+        assert_eq!(rule_label(&Rule::EOI), "end of input");
+        // The fallback arm formats the rule with Debug for any other rule.
+        let fallback = rule_label(&Rule::set_member);
+        assert!(!fallback.is_empty());
+    }
+
+    #[test]
+    fn syntax_diagnostic_handles_custom_error_variant() {
+        // Construct a CustomError at a span to exercise the CustomError arm and
+        // the LineColLocation::Span arm of syntax_diagnostic.
+        use pest::error::{Error, ErrorVariant};
+        let src = "aion 0.0.1-1;";
+        let span = pest::Span::new(src, 0, 4).unwrap();
+        let err: Error<Rule> = Error::new_from_span(
+            ErrorVariant::CustomError {
+                message: "a custom message".to_string(),
+            },
+            span,
+        );
+        let diag = super::syntax_diagnostic(src, err);
+        assert_eq!(diag.code, Code::Syntax);
+        assert_eq!(diag.note.as_deref(), Some("a custom message"));
+        let s = diag.span.expect("span");
+        assert_eq!(s.start, 0);
+        assert_eq!(s.end, 4);
+    }
+
+    #[test]
+    fn describe_parsing_error_handles_all_combinations() {
+        // positives only
+        let p = describe_parsing_error(&[Rule::version], &[]);
+        assert!(p.starts_with("expected"));
+        // negatives only
+        let n = describe_parsing_error(&[], &[Rule::EOI]);
+        assert!(n.starts_with("unexpected"));
+        // both
+        let b = describe_parsing_error(&[Rule::version], &[Rule::EOI]);
+        assert!(b.contains("expected") && b.contains("unexpected"));
+        // neither
+        let e = describe_parsing_error(&[], &[]);
+        assert_eq!(e, "malformed input");
+    }
 }
