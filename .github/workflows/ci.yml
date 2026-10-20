@@ -108,11 +108,18 @@ jobs:
   # ---------------------------------------------------------------------------
   # Semantic versioning — flags breaking API changes in the library crate.
   # Runs only on pull requests, where a baseline comparison is meaningful.
+  #
+  # Non-blocking: cargo-semver-checks diffs against the crate's last release on
+  # crates.io. Until `aion-validator` is published there, it has no baseline and
+  # errors with "not found in registry". `continue-on-error` keeps that from
+  # failing CI; once the crate is published the job produces a real signal and
+  # this flag can be removed.
   # ---------------------------------------------------------------------------
   semver:
     name: semver-checks
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust ${{ env.RUST_STABLE }}
