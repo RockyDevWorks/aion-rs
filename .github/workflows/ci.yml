@@ -29,7 +29,7 @@ jobs:
     name: rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust ${{ env.RUST_STABLE }} (with rustfmt)
         uses: dtolnay/rust-toolchain@master
         with:
@@ -45,7 +45,7 @@ jobs:
     name: clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust ${{ env.RUST_STABLE }} (with clippy)
         uses: dtolnay/rust-toolchain@master
         with:
@@ -72,7 +72,7 @@ jobs:
           - os: ubuntu-latest
             toolchain: "1.85.0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust ${{ matrix.toolchain }}
         uses: dtolnay/rust-toolchain@master
         with:
@@ -94,7 +94,7 @@ jobs:
     name: doc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust ${{ env.RUST_STABLE }}
         uses: dtolnay/rust-toolchain@master
         with:
@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust ${{ env.RUST_STABLE }}
         uses: dtolnay/rust-toolchain@master
         with:
