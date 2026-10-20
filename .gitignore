@@ -1,2 +1,9 @@
 /target
 *.log
+
+# Zensical documentation build output and cache
+/site/
+/.zensical/
+
+# Python virtual environment used to run Zensical locally
+/.venv/
