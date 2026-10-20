@@ -134,11 +134,15 @@ CI runs on GitHub Actions (`.github/workflows/`):
   - `rustfmt` — `cargo fmt --all --check`.
   - `clippy` — `cargo clippy --all-targets --all-features -- -D warnings`.
   - `test` — build + `cargo test` on Linux, Windows, and macOS using a pinned
-    recent stable toolchain (**Rust 1.99.1**), plus a pinned **MSRV 1.74.0**
+    recent stable toolchain (**Rust 1.99.1**), plus a pinned **MSRV 1.85.0**
     build on Linux, and doc tests.
   - `doc` — `cargo doc --no-deps` with `-D warnings`.
   - `semver-checks` — [`cargo-semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks)
-    on pull requests, to flag breaking changes to the library API.
+    on pull requests, to flag breaking changes to the library API. It diffs
+    against the crate's last crates.io release, so the job first probes
+    crates.io and **skips** the check (passing) while `aion-validator` is
+    unpublished; the real comparison runs automatically once the crate is
+    published.
 - **`audit.yml`** — `cargo audit` for known security advisories, on dependency
   changes and on a weekly schedule.
 
@@ -149,8 +153,9 @@ a single pull request.
 
 The primary CI toolchain is pinned to a recent stable release (**Rust 1.99.1**)
 via the `RUST_STABLE` env var in `ci.yml`; bump it as new releases land. The
-minimum supported Rust version (MSRV) is **1.74.0**, matching `clap`'s
-requirement and recorded as `rust-version` in `Cargo.toml`.
+minimum supported Rust version (MSRV) is **1.85.0**, recorded as `rust-version`
+in `Cargo.toml`. 1.85 is required because transitive dependencies (e.g.
+`clap_lex`) ship edition-2024 manifests, which older Cargo cannot parse.
 
 ## Diagnostics
 
@@ -209,6 +214,13 @@ aion-rs/
     ├── complete.aion
     └── invalid.aion
 ```
+
+### Crate naming
+
+The Cargo package is `aion-validator` (library crate `aion_validator`), chosen
+to avoid a name collision with the unrelated `aion` crate already published on
+crates.io. The command-line binary is still named `aion`, so all usage above is
+unchanged.
 
 ### Grammar authority
 

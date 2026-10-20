@@ -7,8 +7,8 @@
 use std::fs;
 use std::path::PathBuf;
 
-use aion::check;
-use aion::diagnostic::{Code, Diagnostic};
+use aion_validator::check;
+use aion_validator::diagnostic::{Code, Diagnostic};
 
 /// Load a fixture file from `tests/fixtures/<category>/<name>`.
 fn load(category: &str, name: &str) -> String {

@@ -1,10 +1,18 @@
+# The package is named `aion-validator` to avoid a collision with the unrelated
+# `aion` crate already on crates.io (a duration/datetime utility). The CLI
+# binary is still named `aion`, so usage is unchanged. The library crate is
+# therefore `aion_validator`.
 [package]
-name = "aion"
+name = "aion-validator"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.74.0"
+rust-version = "1.85.0"
 description = "Structural validator for the AION v0.0.1-1 language-definition format"
 license = "MIT OR Apache-2.0"
+
+[lib]
+name = "aion_validator"
+path = "src/lib.rs"
 
 [[bin]]
 name = "aion"
