@@ -1,0 +1,39 @@
+# Codecov configuration.
+#
+# Keeps Codecov's own status checks consistent with the CI coverage gate
+# (see the `coverage` job in .github/workflows/ci.yml, which enforces
+# COVERAGE_MIN = 95% total line coverage via cargo-llvm-cov).
+#
+# Coverage is uploaded as LCOV from the `coverage` CI job.
+
+coverage:
+  # Round displayed percentages and compare to two decimal places.
+  precision: 2
+  round: down
+  range: "90...100"
+
+  status:
+    project:
+      default:
+        # Require the project's total coverage to stay at or above 95%, the
+        # same floor the CI gate enforces.
+        target: 95%
+        # Allow a tiny drop to absorb measurement noise without flapping.
+        threshold: 0.5%
+        if_ci_failed: error
+    patch:
+      default:
+        # New/changed lines in a PR should be well covered.
+        target: 90%
+        threshold: 0.5%
+
+# Post a coverage comment on pull requests with the diff and file breakdown.
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+
+# src/main.rs is exercised by the CLI integration tests via a child process,
+# whose execution is not merged into the instrumented coverage. Its on-file
+# number therefore understates reality; the project gate is on the total.
+ignore: []

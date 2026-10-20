@@ -214,9 +214,12 @@ impl<'s> Validator<'s> {
                 Rule::metadata_description => description_props.push(inner),
                 Rule::metadata_display_name => {
                     display_name_spans.push(span_of(self.source, &inner));
-                    // display_name must be a string.
+                    // display_name must be a string, and its escapes must be
+                    // valid Unicode scalar values (AION-012).
                     if let Some(value) = self.property_value(&inner) {
-                        self.check_value_type(&value, ValueKind::String);
+                        if self.check_value_type(&value, ValueKind::String) {
+                            self.check_value_contents(&value, ValueKind::String);
+                        }
                     }
                 }
                 _ => {}
@@ -496,8 +499,16 @@ impl<'s> Validator<'s> {
 
     /// Reject duplicate members in a set, decoding strings/references and
     /// comparing phonemes by exact literal content.
+    ///
+    /// Comparison keys preserve the documented policy (see
+    /// `docs/types.md#duplicate-member-comparison`): string sets compare by
+    /// decoded value (`s:`), reference sets by kind plus decoded argument
+    /// (`r:kind:`), and phoneme sets by exact literal content (`p:`). Membership
+    /// is tracked in a [`HashSet`], so detection is linear in the number of
+    /// members rather than quadratic.
     fn check_set_members(&mut self, set: &Pair<'s, Rule>, expected: ValueKind) {
-        let mut seen: Vec<(String, Span)> = Vec::new();
+        use std::collections::HashSet;
+        let mut seen: HashSet<String> = HashSet::new();
         for member in set.clone().into_inner() {
             if member.as_rule() != Rule::set_member {
                 continue;
@@ -527,7 +538,7 @@ impl<'s> Validator<'s> {
                 _ => continue,
             };
 
-            if seen.iter().any(|(k, _)| *k == key) {
+            if !seen.insert(key) {
                 let label = match expected {
                     ValueKind::ReferenceSet => "duplicate reference",
                     ValueKind::PhonemeSet => "duplicate phoneme literal",
@@ -538,8 +549,6 @@ impl<'s> Validator<'s> {
                         .with_span(member_span)
                         .with_note("set members must be unique by their decoded/literal value"),
                 );
-            } else {
-                seen.push((key, member_span));
             }
         }
     }
@@ -668,4 +677,357 @@ fn invalid_escape(span: Span, note: impl Into<String>) -> Diagnostic {
     Diagnostic::new(Code::InvalidEscape, "invalid escape sequence in string")
         .with_span(span)
         .with_note(note)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::check;
+    use crate::diagnostic::Code;
+
+    /// Wrap a language body in a minimal valid document.
+    fn doc(body: &str) -> String {
+        format!("aion 0.0.1-1;\nlanguage t {{\n    metadata {{\n        description = \"d\";\n    }}\n{body}\n}}\n")
+    }
+
+    #[test]
+    fn large_unique_phoneme_set_validates() {
+        // A large homogeneous set with no duplicates must validate. This
+        // exercises the linear (HashSet) duplicate path on many members.
+        let mut members = String::new();
+        for i in 0..5000 {
+            if i > 0 {
+                members.push_str(", ");
+            }
+            members.push_str(&format!("/p{i}/"));
+        }
+        let body = format!(
+            "    phonology.inventory {{\n        consonants {{\n            include = {{ {members} }};\n        }}\n    }}"
+        );
+        assert!(
+            check(&doc(&body)).is_ok(),
+            "large unique set should validate"
+        );
+    }
+
+    #[test]
+    fn large_set_with_one_duplicate_is_caught() {
+        // 4000 unique phonemes plus one repeat; the single duplicate must be
+        // reported even deep in a large set.
+        let mut members = String::new();
+        for i in 0..4000 {
+            members.push_str(&format!("/p{i}/, "));
+        }
+        members.push_str("/p0/"); // duplicate of the first member
+        let body = format!(
+            "    phonology.inventory {{\n        consonants {{\n            include = {{ {members} }};\n        }}\n    }}"
+        );
+        let diags = check(&doc(&body)).expect_err("duplicate should be caught");
+        assert!(diags.iter().any(|d| d.code == Code::DuplicateMember));
+    }
+
+    #[test]
+    fn display_name_invalid_escape_is_reported() {
+        // Regression: display_name escapes must be validated (AION-012).
+        let body = ""; // metadata already carries display_name below
+        let src = format!(
+            "aion 0.0.1-1;\nlanguage t {{\n    metadata {{\n        description = \"d\";\n        display_name = \"x\\u{{110000}}\";\n    }}\n{body}}}\n"
+        );
+        let diags = check(&src).expect_err("invalid display_name escape");
+        assert!(diags.iter().any(|d| d.code == Code::InvalidEscape));
+    }
+
+    #[test]
+    fn display_name_valid_escape_accepted() {
+        let src = "aion 0.0.1-1;\nlanguage t {\n    metadata {\n        description = \"d\";\n        display_name = \"Ael\\u{00ED}th\";\n    }\n}\n";
+        assert!(check(src).is_ok(), "valid display_name escape should pass");
+    }
+
+    /// Grammar/validator agreement: for every property, a correctly typed
+    /// value validates and every other value form is rejected as AION-008
+    /// (incorrect value type). The grammar parses all value forms permissively;
+    /// this pins the validator's type decision against that permissive surface.
+    #[test]
+    fn property_value_types_agree_with_grammar() {
+        // Representative value forms the grammar accepts in value position.
+        const STRING: &str = "\"x\"";
+        const MULTILINE: &str = "\"\"\"x\"\"\"";
+        const INT: &str = "7";
+        const STRING_SET: &str = "{ \"a\", \"b\" }";
+        const PHONEME_SET: &str = "{ /a/, /b/ }";
+        const REFERENCE_SET: &str = "{ language(\"X\") }";
+        const EMPTY_SET: &str = "{ }";
+
+        fn intent(value_line: &str) -> String {
+            format!("    intent phonology {{\n        {value_line}\n    }}")
+        }
+        fn inv(value_line: &str) -> String {
+            format!("    phonology.inventory {{\n        consonants {{\n            {value_line}\n        }}\n    }}")
+        }
+        // Each wrapper builds a COMPLETE document (one metadata block with the
+        // mandatory description) so there is no duplicate-block noise.
+        fn whole(body: &str) -> String {
+            format!("aion 0.0.1-1;\nlanguage t {{\n{body}\n}}\n")
+        }
+        fn with_meta_and(extra: &str) -> String {
+            whole(&format!(
+                "    metadata {{\n        description = \"d\";\n    }}\n{extra}"
+            ))
+        }
+
+        // (wrapper, accepted forms, rejected forms) per property.
+        type Wrap = fn(&str) -> String;
+        let display_name: Wrap = |v| {
+            whole(&format!(
+                "    metadata {{\n        description = \"d\";\n        display_name = {v};\n    }}"
+            ))
+        };
+        let style: Wrap = |v| with_meta_and(&intent(&format!("style = {v};")));
+        let references: Wrap = |v| with_meta_and(&intent(&format!("references = {v};")));
+        let cardinality: Wrap = |v| with_meta_and(&inv(&format!("cardinality = {v};")));
+        let include: Wrap = |v| with_meta_and(&inv(&format!("include = {v};")));
+
+        let cases: &[(&str, Wrap, &[&str], &[&str])] = &[
+            // name, wrapper, accepted, rejected(AION-008)
+            (
+                "display_name",
+                display_name,
+                &[STRING, MULTILINE],
+                &[INT, STRING_SET, PHONEME_SET, REFERENCE_SET],
+            ),
+            (
+                "style",
+                style,
+                &[STRING, MULTILINE, STRING_SET, EMPTY_SET],
+                &[INT, PHONEME_SET, REFERENCE_SET],
+            ),
+            (
+                "references",
+                references,
+                &[REFERENCE_SET, EMPTY_SET],
+                &[STRING, INT, STRING_SET, PHONEME_SET],
+            ),
+            (
+                "cardinality",
+                cardinality,
+                &[INT],
+                &[STRING, STRING_SET, PHONEME_SET, REFERENCE_SET, EMPTY_SET],
+            ),
+            (
+                "include",
+                include,
+                &[PHONEME_SET, EMPTY_SET],
+                &[STRING, INT, STRING_SET, REFERENCE_SET],
+            ),
+        ];
+
+        for (name, wrap, accepted, rejected) in cases {
+            for v in *accepted {
+                let src = wrap(v);
+                assert!(
+                    check(&src).is_ok(),
+                    "{name}: value `{v}` should be accepted\n{src}"
+                );
+            }
+            for v in *rejected {
+                let src = wrap(v);
+                let diags = check(&src)
+                    .err()
+                    .unwrap_or_else(|| panic!("{name}: value `{v}` should be rejected\n{src}"));
+                assert!(
+                    diags.iter().any(|d| d.code == Code::WrongType),
+                    "{name}: value `{v}` should be AION-008, got {:?}\n{src}",
+                    diags.iter().map(|d| d.code).collect::<Vec<_>>()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn phoneme_duplicate_uses_exact_literal_no_normalization() {
+        // Two phoneme literals that are byte-distinct are NOT duplicates, even
+        // if they might normalize to the same NFC form. Policy: exact content.
+        // U+00E9 (é) vs U+0065 U+0301 (e + combining acute) are distinct.
+        let body = "    phonology.inventory {\n        consonants {\n            include = { /\u{00e9}/, /e\u{0301}/ };\n        }\n    }";
+        assert!(
+            check(&doc(body)).is_ok(),
+            "byte-distinct phonemes must not be treated as duplicates"
+        );
+    }
+
+    // ---- decode_quoted: direct unit tests ---------------------------------
+    //
+    // Several escape-handling arms in `decode_quoted` are defensive: the
+    // grammar normally rejects the malformed forms before the validator runs,
+    // so they are unreachable through `check()`. We exercise them directly on
+    // the free function to lock in their behaviour and cover those branches.
+
+    use super::{decode_quoted, Span};
+
+    /// A throwaway span for decode tests; its values are irrelevant to decoding.
+    fn span() -> Span {
+        Span {
+            start: 0,
+            end: 0,
+            line: 1,
+            column: 1,
+        }
+    }
+
+    #[test]
+    fn decode_quoted_simple_escapes_all_decode() {
+        let decoded = decode_quoted(r#""a\"b\\c\nd\re\tf""#, span()).expect("valid escapes");
+        assert_eq!(decoded, "a\"b\\c\nd\re\tf");
+    }
+
+    #[test]
+    fn decode_quoted_plain_text_passthrough() {
+        assert_eq!(decode_quoted("\"hello\"", span()).unwrap(), "hello");
+    }
+
+    #[test]
+    fn decode_quoted_valid_unicode_escape() {
+        assert_eq!(decode_quoted(r#""x\u{41}y""#, span()).unwrap(), "xAy");
+    }
+
+    #[test]
+    fn decode_quoted_missing_brace_after_u() {
+        let err = decode_quoted(r#""\uABCD""#, span()).unwrap_err();
+        assert_eq!(err.code, Code::InvalidEscape);
+        assert!(err.note.unwrap().contains("expected `{`"));
+    }
+
+    #[test]
+    fn decode_quoted_empty_hex_is_rejected() {
+        let err = decode_quoted(r#""\u{}""#, span()).unwrap_err();
+        assert_eq!(err.code, Code::InvalidEscape);
+        assert!(err.note.unwrap().contains("1-6 hexadecimal"));
+    }
+
+    #[test]
+    fn decode_quoted_too_long_hex_is_rejected() {
+        let err = decode_quoted(r#""\u{1234567}""#, span()).unwrap_err();
+        assert_eq!(err.code, Code::InvalidEscape);
+        assert!(err.note.unwrap().contains("1-6 hexadecimal"));
+    }
+
+    #[test]
+    fn decode_quoted_non_hex_digit_is_rejected() {
+        let err = decode_quoted(r#""\u{12G4}""#, span()).unwrap_err();
+        assert_eq!(err.code, Code::InvalidEscape);
+        assert!(err.note.unwrap().contains("1-6 hexadecimal"));
+    }
+
+    #[test]
+    fn decode_quoted_surrogate_is_not_a_scalar() {
+        let err = decode_quoted(r#""\u{D800}""#, span()).unwrap_err();
+        assert_eq!(err.code, Code::InvalidEscape);
+        assert!(err
+            .note
+            .unwrap()
+            .contains("not a valid Unicode scalar value"));
+    }
+
+    #[test]
+    fn decode_quoted_above_max_scalar_is_rejected() {
+        let err = decode_quoted(r#""\u{110000}""#, span()).unwrap_err();
+        assert_eq!(err.code, Code::InvalidEscape);
+    }
+
+    #[test]
+    fn decode_quoted_unknown_escape_is_rejected() {
+        let err = decode_quoted(r#""\x""#, span()).unwrap_err();
+        assert_eq!(err.code, Code::InvalidEscape);
+        assert!(err.note.unwrap().contains("unknown escape"));
+    }
+
+    #[test]
+    fn decode_quoted_trailing_backslash_is_rejected() {
+        // Raw string cannot end in a backslash before the closing quote using
+        // r#""#, so build it explicitly: the literal `"\`.
+        let err = decode_quoted("\"\\", span()).unwrap_err();
+        assert_eq!(err.code, Code::InvalidEscape);
+        assert!(err.note.unwrap().contains("trailing backslash"));
+    }
+
+    #[test]
+    fn decode_quoted_max_scalar_boundary_is_valid() {
+        // U+10FFFF is the highest valid scalar value.
+        let decoded = decode_quoted(r#""\u{10FFFF}""#, span()).unwrap();
+        assert_eq!(decoded, "\u{10FFFF}");
+    }
+
+    // ---- validator-level coverage for less-common paths -------------------
+
+    #[test]
+    fn conlang_and_language_references_are_distinct_not_duplicates() {
+        // Same decoded argument but different kinds => NOT a duplicate.
+        let body = "    intent phonology {\n        references = { language(\"X\"), conlang(\"X\") };\n    }";
+        assert!(
+            check(&doc(body)).is_ok(),
+            "language(X) and conlang(X) are distinct members"
+        );
+    }
+
+    #[test]
+    fn duplicate_conlang_reference_is_caught() {
+        let body = "    intent phonology {\n        references = { conlang(\"Q\"), conlang(\"Q\") };\n    }";
+        let diags = check(&doc(body)).expect_err("duplicate conlang reference");
+        assert!(diags.iter().any(|d| d.code == Code::DuplicateMember));
+    }
+
+    #[test]
+    fn duplicate_string_set_member_is_caught() {
+        let body = "    intent phonology {\n        style = { \"a\", \"a\" };\n    }";
+        let diags = check(&doc(body)).expect_err("duplicate string member");
+        assert!(diags.iter().any(|d| d.code == Code::DuplicateMember));
+    }
+
+    #[test]
+    fn multiline_string_value_is_accepted_for_description() {
+        let body = "    intent phonology {\n        description = \"\"\"multi\nline\"\"\";\n    }";
+        assert!(check(&doc(body)).is_ok());
+    }
+
+    #[test]
+    fn whitespace_only_multiline_description_is_empty_value() {
+        let src = "aion 0.0.1-1;\nlanguage t {\n    metadata {\n        description = \"\"\"   \n   \"\"\";\n    }\n}\n";
+        let diags = check(src).expect_err("whitespace-only description");
+        assert!(diags.iter().any(|d| d.code == Code::EmptyValue));
+    }
+
+    #[test]
+    fn reference_argument_escape_is_decoded_for_comparison() {
+        // language("A") and language("\u{41}") decode to the same arg => dup.
+        let body = "    intent phonology {\n        references = { language(\"A\"), language(\"\\u{41}\") };\n    }";
+        let diags = check(&doc(body)).expect_err("escaped duplicate reference arg");
+        assert!(diags.iter().any(|d| d.code == Code::DuplicateMember));
+    }
+
+    #[test]
+    fn exclude_phoneme_set_is_validated() {
+        let body = "    phonology.inventory {\n        vowels {\n            exclude = { /x/, /y/ };\n        }\n    }";
+        assert!(check(&doc(body)).is_ok());
+    }
+
+    #[test]
+    fn invalid_escape_in_phoneme_free_string_argument_of_reference_reported() {
+        let body =
+            "    intent phonology {\n        references = { language(\"bad\\u{D800}\") };\n    }";
+        let diags = check(&doc(body)).expect_err("invalid escape in reference arg");
+        assert!(diags.iter().any(|d| d.code == Code::InvalidEscape));
+    }
+
+    #[test]
+    fn many_duplicate_members_do_not_exceed_diagnostic_cap() {
+        // Build a set with far more than MAX_DIAGNOSTICS duplicates to exercise
+        // the push cap. All members after the first are duplicates.
+        let mut members = String::from("\"a\"");
+        for _ in 0..(super::MAX_DIAGNOSTICS + 50) {
+            members.push_str(", \"a\"");
+        }
+        let body = format!("    intent phonology {{\n        style = {{ {members} }};\n    }}");
+        let diags = check(&doc(&body)).expect_err("many duplicates");
+        assert!(diags.len() <= super::MAX_DIAGNOSTICS);
+        assert!(diags.iter().all(|d| d.code == Code::DuplicateMember));
+    }
 }

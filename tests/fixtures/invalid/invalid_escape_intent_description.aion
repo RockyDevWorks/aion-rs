@@ -1,0 +1,11 @@
+// Invalid Unicode scalar escape in an intent phonology description (AION-012).
+aion 0.0.1-1;
+
+language badescape {
+    metadata {
+        description = "Valid description.";
+    }
+    intent phonology {
+        description = "Soft \u{D800} surrogate.";
+    }
+}

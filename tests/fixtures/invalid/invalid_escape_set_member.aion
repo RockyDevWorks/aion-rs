@@ -1,0 +1,11 @@
+// Invalid Unicode scalar escape in a string-set member (AION-012).
+aion 0.0.1-1;
+
+language badescape {
+    metadata {
+        description = "Valid description.";
+    }
+    intent phonology {
+        style = { "melodic", "soft\u{110000}" };
+    }
+}

@@ -1,0 +1,12 @@
+// Two references whose decoded arguments match are duplicates (AION-010):
+// language("Tamil") and language("\u{54}amil") share kind and decoded value.
+aion 0.0.1-1;
+
+language dupref {
+    metadata {
+        description = "Escaped duplicate references.";
+    }
+    intent phonology {
+        references = { language("Tamil"), language("\u{54}amil") };
+    }
+}

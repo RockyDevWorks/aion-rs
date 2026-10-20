@@ -1,0 +1,12 @@
+// Two string members that decode to the same value via different escapes
+// are duplicates (AION-010): "soft" and "\u{73}oft" both decode to `soft`.
+aion 0.0.1-1;
+
+language dupescape {
+    metadata {
+        description = "Escaped duplicate string members.";
+    }
+    intent phonology {
+        style = { "soft", "\u{73}oft" };
+    }
+}

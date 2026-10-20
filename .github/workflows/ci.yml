@@ -20,6 +20,9 @@ env:
   # Pinned recent stable toolchain used by the fmt/clippy/doc/semver jobs.
   # Bump this as new Rust releases land (Dependabot does not manage it).
   RUST_STABLE: "1.99.1"
+  # Minimum required line coverage, in percent, enforced by the coverage job.
+  # Bump this as coverage improves; never lower it without discussion.
+  COVERAGE_MIN: "95"
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -86,6 +89,74 @@ jobs:
         run: cargo test --all-targets --verbose
       - name: cargo test (doc)
         run: cargo test --doc --verbose
+
+  # ---------------------------------------------------------------------------
+  # Code coverage — gated at a minimum TOTAL line coverage threshold.
+  #
+  # Runs the whole test suite under instrumentation with cargo-llvm-cov and
+  # fails the job if total line coverage drops below COVERAGE_MIN. Runs on
+  # Linux, where the CLI integration tests (tests/cli.rs) execute normally.
+  #
+  # Note: tests/cli.rs drives the `aion` binary as a child process. Child-
+  # process execution is not merged into the instrumented harness's coverage,
+  # so src/main.rs reads lower on its own; the gate is enforced on the project
+  # total, which the library + integration tests keep above the threshold.
+  # ---------------------------------------------------------------------------
+  coverage:
+    name: coverage (>=${{ env.COVERAGE_MIN }}%)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Allows codecov/codecov-action to use OIDC for tokenless uploads when
+      # CODECOV_TOKEN is not configured (e.g. public repos).
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Rust ${{ env.RUST_STABLE }} (with llvm-tools)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - name: Generate coverage report (LCOV)
+        # Produce the report first, without the gate, so the LCOV file exists
+        # even when coverage is below threshold — we still want it on Codecov
+        # and as an artifact in that case.
+        run: cargo llvm-cov --all-targets --lcov --output-path lcov.info
+      - name: Coverage summary
+        if: always()
+        run: cargo llvm-cov report --summary-only
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          # Fail the step if the upload itself errors, so a broken integration
+          # is visible rather than silently green.
+          fail_ci_if_error: true
+          # Project slug lets the action resolve the repo even on forks.
+          slug: ${{ github.repository }}
+        env:
+          # Set this repository secret in GitHub → Settings → Secrets and
+          # variables → Actions. Required for private repos and for reliable
+          # uploads on pull requests from forks; harmless if the repo is public.
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage report (LCOV) as a build artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: lcov.info
+          if-no-files-found: ignore
+      - name: Enforce minimum total coverage
+        # Run the gate last so that the summary, the Codecov upload, and the
+        # artifact all happen first; this step is the one that fails the job
+        # when total line coverage drops below COVERAGE_MIN.
+        run: cargo llvm-cov report --fail-under-lines ${{ env.COVERAGE_MIN }}
 
   # ---------------------------------------------------------------------------
   # Documentation must build without warnings.
