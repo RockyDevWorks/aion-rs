@@ -8,6 +8,36 @@ It validates definitions only. It does **not** generate languages or phonemes,
 invoke AI, produce ELANG output, interpret linguistic meaning, or modify source
 files.
 
+## Documentation
+
+Full documentation for AION **v0.0.1-1** — installation, quick start, syntax,
+supported types, metadata, phonology intent, inventories, CLI usage, and
+examples — is published at:
+
+<https://rockydevworks.github.io/aion-rs/>
+
+The documentation site is built with [Zensical](https://zensical.org/), a
+static site generator by the Material for MkDocs team. Its sources live in
+[`docs/`](docs/) and the site is configured by [`zensical.toml`](zensical.toml).
+
+### Preview the docs locally
+
+Zensical is a Python package. Install it into a virtual environment and serve
+the site (see the [installation guide](https://zensical.org/docs/get-started/)
+for platform-specific details):
+
+```sh
+python -m venv .venv
+# Windows:        .venv\Scripts\activate
+# macOS / Linux:  source .venv/bin/activate
+pip install zensical
+
+zensical serve            # live preview at http://localhost:8000
+zensical build --strict   # one-off strict build into ./site
+```
+
+The generated `site/` directory and Zensical's cache are git-ignored.
+
 ## What AION looks like
 
 The smallest valid definition:
@@ -145,6 +175,10 @@ CI runs on GitHub Actions (`.github/workflows/`):
     published.
 - **`audit.yml`** — `cargo audit` for known security advisories, on dependency
   changes and on a weekly schedule.
+- **`docs.yml`** — builds the Zensical documentation site with
+  `zensical build --strict` and deploys it to GitHub Pages on pushes to `main`
+  that touch `docs/`, `zensical.toml`, or the workflow itself. This workflow is
+  independent of the Rust CI above.
 
 Dependencies and the actions themselves are kept current by **Dependabot**
 (`.github/dependabot.yml`): weekly updates for the `cargo` and
@@ -198,6 +232,8 @@ The source is never normalized or rewritten.
 aion-rs/
 ├── Cargo.toml
 ├── README.md
+├── zensical.toml          # documentation site configuration (Zensical)
+├── docs/                  # documentation sources (Markdown)
 ├── grammar/
 │   └── aion.pest          # authoritative grammar (compiled into the crate)
 ├── src/

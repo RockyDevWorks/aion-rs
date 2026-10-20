@@ -1,0 +1,101 @@
+# Zensical configuration for the AION documentation site.
+#
+# Zensical is the static site generator built by the Material for MkDocs team.
+# This file uses Zensical's native TOML schema — it is NOT a renamed mkdocs.yml,
+# and MkDocs YAML option shapes are not assumed to be interchangeable here.
+# See https://zensical.org/docs/setup/basics/ for the authoritative reference.
+
+[project]
+site_name = "AION"
+# Canonical site URL. GitHub Pages serves a project site from the repository
+# name as a sub-path, hence the trailing "/aion-rs/".
+site_url = "https://rockydevworks.github.io/aion-rs/"
+site_description = "Documentation for the AION v0.0.1-1 language-definition format and its Rust validator."
+site_author = "RockyDevWorks"
+copyright = "Dual-licensed under MIT or Apache-2.0."
+
+repo_url = "https://github.com/RockyDevWorks/aion-rs"
+repo_name = "RockyDevWorks/aion-rs"
+edit_uri = "https://github.com/RockyDevWorks/aion-rs/tree/main/docs"
+
+# Source and output directories, resolved relative to this file.
+docs_dir = "docs"
+site_dir = "site"
+
+# Navigation. Entries are inline tables mapping a title to a Markdown source
+# (or to a nested list of entries).
+nav = [
+  { Home = "index.md" },
+  { Installation = "installation.md" },
+  { "Quick start" = "quick-start.md" },
+  { Syntax = "syntax.md" },
+  { "Supported types" = "types.md" },
+  { Metadata = "metadata.md" },
+  { "Phonology intent" = "intent-phonology.md" },
+  { Inventories = "inventories.md" },
+  { "CLI usage" = "cli.md" },
+  { Examples = "examples.md" },
+]
+
+[project.theme]
+variant = "material"
+language = "en"
+features = [
+  "navigation.instant",
+  "navigation.tracking",
+  "navigation.top",
+  "navigation.footer",
+  "content.code.copy",
+  "content.code.annotate",
+  "toc.follow",
+  "search.suggest",
+  "search.highlight",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-7"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-4"
+toggle.name = "Switch to light mode"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/RockyDevWorks/aion-rs"
+
+# --- Plugins ---
+
+[project.plugins.search]
+
+# --- Python Markdown extensions ---
+
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.md_in_html]
+[project.markdown_extensions.tables]
+
+[project.markdown_extensions.toc]
+permalink = true
+
+# --- PyMdown extensions ---
+
+[project.markdown_extensions.pymdownx.details]
+
+[project.markdown_extensions.pymdownx.superfences]
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+
+[project.markdown_extensions.pymdownx.snippets]
