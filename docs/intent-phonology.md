@@ -65,14 +65,56 @@ a definition any less valid.
     neither recognizes nor rejects them specifically — they are treated like
     any other string. Treat this list as a starting palette, not a rulebook.
 
-- **`style`** — overall aesthetic, for example: `melodic`, `soft`, `harsh`,
-  `archaic`, `guttural`, `flowing`.
-- **`character`** — qualitative texture, for example: `liquid`, `sibilant`,
-  `nasal`, `percussive`, `breathy`.
-- **`rhythm`** — prosodic feel, for example: `trochaic`, `iambic`,
-  `syllable-timed`, `staccato`, `lilting`.
-- **`articulation`** — articulatory tendencies, for example: `front`, `back`,
-  `open`, `close`, `rounded`, `tense`.
+#### `style` — overall aesthetic
+
+A broad palette of descriptive adjectives capturing the overall feel:
+
+`melodic`, `flowing`, `lyrical`, `musical`, `harmonic`, `smooth`, `soft`,
+`gentle`, `airy`, `breathy`, `whispery`, `resonant`, `sonorous`, `deep`,
+`guttural`, `throaty`, `harsh`, `rough`, `raspy`, `crisp`, `sharp`, `staccato`,
+`percussive`, `clipped`, `fluid`, `elegant`, `ornate`, `minimalist`, `sparse`,
+`dense`, `complex`, `simple`, `ceremonial`, `chant-like`, `song-like`,
+`whimsical`, `ethereal`, `earthy`, `mechanical`, `synthetic`, `organic`,
+`angular`, `rounded`, `bright`, `dark`, `warm`, `cold`.
+
+#### `character` — qualitative texture
+
+Terms grouped by the facet of character they evoke:
+
+| Category | Suggested terms |
+|----------|-----------------|
+| Historical | `ancient`, `archaic`, `classical`, `traditional`, `ancestral`, `primordial` |
+| Emotional | `warm`, `intimate`, `passionate`, `melancholic`, `joyful`, `solemn`, `serene` |
+| Social | `formal`, `informal`, `aristocratic`, `rustic`, `scholarly`, `conversational` |
+| Cultural/aesthetic | `sacred`, `mystical`, `ritualistic`, `heroic`, `regal`, `pastoral` |
+| Atmospheric | `mysterious`, `haunting`, `dreamlike`, `otherworldly`, `futuristic` |
+| Expressive | `dramatic`, `playful`, `restrained`, `assertive`, `poetic`, `contemplative` |
+| Identity | `rebellious`, `disciplined`, `dignified`, `enigmatic`, `vibrant` |
+
+#### `rhythm` — prosodic feel
+
+| Category | Suggested terms |
+|----------|-----------------|
+| Rhythmic tendencies | `syllable-timed`, `stress-timed`, `mora-timed` |
+| Cadence | `flowing`, `clipped`, `measured`, `rolling`, `lilting`, `staccato` |
+| Pace | `slow`, `moderate`, `rapid`, `variable` |
+| Regularity | `regular`, `irregular`, `syncopated`, `steady` |
+| Stress patterns | `initial-stress`, `final-stress`, `penultimate-stress`, `variable-stress` |
+| Prosodic impression | `chant-like`, `lyrical`, `percussive`, `sing-song`, `undulating` |
+| Pausing | `frequent pauses`, `long pauses`, `continuous flow` |
+
+#### `articulation` — articulatory tendencies
+
+| Category | Suggested terms |
+|----------|-----------------|
+| Place of articulation | `bilabial`, `labiodental`, `dental`, `alveolar`, `postalveolar`, `retroflex`, `palatal`, `velar`, `uvular`, `pharyngeal`, `glottal` |
+| Manner of articulation | `plosive`, `nasal`, `trill`, `tap`, `flap`, `fricative`, `affricate`, `approximant`, `lateral` |
+| Voicing | `voiced`, `voiceless` |
+| Airstream | `pulmonic`, `ejective`, `implosive`, `click` |
+| Secondary articulation | `labialized`, `palatalized`, `velarized`, `pharyngealized` |
+| Phonation | `breathy`, `creaky`, `modal` |
+| Vowel properties | `front`, `central`, `back`, `high`, `mid`, `low`, `rounded`, `unrounded` |
+| Descriptive preferences | `resonant nasals`, `clear vowels`, `soft consonant transitions`, `strong retroflex articulation` |
 
 Again, these are illustrative starting points only. Substitute your own terms
 freely.
